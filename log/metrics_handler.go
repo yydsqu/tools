@@ -47,7 +47,7 @@ type Notify interface {
 type Metric struct {
 	Notify         Notify
 	Name           string        `json:"name"`
-	Level          slog.Level    `json:"level"`
+	Level          Level         `json:"level"`
 	NotifyPeriod   time.Duration `json:"notify_period"`   // 30分钟内最多通知一次
 	EvaluatePeriod time.Duration `json:"evaluate_period"` // 5分钟内统计日志
 	Threshold      int           `json:"threshold"`       // 触发通知的日志数量阈值

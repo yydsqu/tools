@@ -6,11 +6,15 @@ import (
 
 var (
 	DefaultRetryWaitDuration = time.Millisecond * 100
-	DefaultNumberOfRetries   = 3
+	DefaultAttempts          = 3
 )
 
-func Retry(handle func() (err error)) (err error) {
-	for i := 0; i < DefaultNumberOfRetries; i++ {
+type RetryableFunc func() error
+
+type RetryableFuncWithResult[T any] func() (T, error)
+
+func Retry(handle RetryableFunc) (err error) {
+	for i := 0; i < DefaultAttempts; i++ {
 		if err = handle(); err == nil {
 			return
 		}
@@ -19,9 +23,9 @@ func Retry(handle func() (err error)) (err error) {
 	return
 }
 
-func RetryWithResult[Result any](handle func() (result Result, err error)) (result Result, err error) {
-	for i := 0; i < DefaultNumberOfRetries; i++ {
-		if result, err = handle(); err == nil {
+func RetryWithResult[T any](handle RetryableFuncWithResult[T]) (empty T, err error) {
+	for i := 0; i < DefaultAttempts; i++ {
+		if empty, err = handle(); err == nil {
 			return
 		} else {
 			time.Sleep(DefaultRetryWaitDuration)

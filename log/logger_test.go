@@ -1,7 +1,6 @@
 package log
 
 import (
-	"github.com/shuiziliu7788/go-tools/notify"
 	"os"
 	"testing"
 	"time"
@@ -22,11 +21,6 @@ func TestMetric(t *testing.T) {
 		NotifyPeriod:   time.Second * 5,
 		EvaluatePeriod: time.Second * 2,
 		Threshold:      50,
-		Notify: &notify.WxPusher{
-			AppToken: "AT_dWk1PSaCmPieZ8MkuY7KqsOHxuwARB3t",
-			TopicIds: []int{31179},
-			Uids:     nil,
-		},
 	}
 	l := NewLogger(NewMetricHandler(NewTerminalHandlerWithLevel(os.Stdout, LevelWarn, true), metric))
 	for i := 0; i < 100; i++ {

@@ -2,91 +2,128 @@ package log
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"runtime"
+	"strconv"
+	"strings"
 	"time"
 )
 
 const errorKey = "LOG_ERROR"
 
-const (
-	legacyLevelFatal = iota
-	legacyLevelError
-	legacyLevelWarn
-	legacyLevelInfo
-	legacyLevelDebug
-	legacyLevelTrace
-)
+type Level slog.Level
 
 const (
-	LevelTrace slog.Level = -8
-	LevelDebug slog.Level = slog.LevelDebug
-	LevelInfo  slog.Level = slog.LevelInfo
-	LevelWarn  slog.Level = slog.LevelWarn
-	LevelError slog.Level = slog.LevelError
-	LevelFatal slog.Level = 12
+	LevelTrace Level = -8
+	LevelDebug Level = Level(slog.LevelDebug)
+	LevelInfo  Level = Level(slog.LevelInfo)
+	LevelWarn  Level = Level(slog.LevelWarn)
+	LevelError Level = Level(slog.LevelError)
+	LevelFatal Level = 12
 )
 
-func FromLegacyLevel(lvl int) slog.Level {
-	switch lvl {
-	case legacyLevelFatal:
-		return LevelFatal
-	case legacyLevelError:
-		return slog.LevelError
-	case legacyLevelWarn:
-		return slog.LevelWarn
-	case legacyLevelInfo:
-		return slog.LevelInfo
-	case legacyLevelDebug:
-		return slog.LevelDebug
-	case legacyLevelTrace:
-		return LevelTrace
+func (l Level) String() string {
+	str := func(base string, val Level) string {
+		if val == 0 {
+			return base
+		}
+		return fmt.Sprintf("%s%+d", base, val)
+	}
+	switch {
+	case l < LevelDebug:
+		return str("TRACE", l-LevelDebug)
+	case l < LevelInfo:
+		return str("DEBUG", l-LevelDebug)
+	case l < LevelWarn:
+		return str("INFO", l-LevelInfo)
+	case l < LevelError:
+		return str("WARN", l-LevelWarn)
+	case l < LevelFatal:
+		return str("ERROR", l-LevelWarn)
 	default:
-		break
+		return str("FATAL", l-LevelError)
 	}
+}
 
-	if lvl > legacyLevelTrace {
-		return LevelTrace
+func (l Level) MarshalJSON() ([]byte, error) {
+	return strconv.AppendQuote(nil, l.String()), nil
+}
+
+func (l *Level) UnmarshalJSON(data []byte) error {
+	s, err := strconv.Unquote(string(data))
+	if err != nil {
+		return err
 	}
-	return LevelFatal
+	return l.parse(s)
+}
+
+func (l Level) MarshalText() ([]byte, error) {
+	return []byte(l.String()), nil
+}
+
+func (l *Level) UnmarshalText(data []byte) error {
+	return l.parse(string(data))
+}
+
+func (l Level) Level() slog.Level {
+	return slog.Level(l)
+}
+
+func (l *Level) parse(s string) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("slog: level string %q: %w", s, err)
+		}
+	}()
+
+	name := s
+	offset := 0
+	if i := strings.IndexAny(s, "+-"); i >= 0 {
+		name = s[:i]
+		offset, err = strconv.Atoi(s[i:])
+		if err != nil {
+			return err
+		}
+	}
+	switch strings.ToUpper(name) {
+	case "TRACE":
+		*l = LevelDebug
+	case "DEBUG":
+		*l = LevelDebug
+	case "INFO":
+		*l = LevelInfo
+	case "WARN":
+		*l = LevelWarn
+	case "ERROR":
+		*l = LevelError
+	case "FATAL":
+		*l = LevelError
+	default:
+		return errors.New("unknown name")
+	}
+	*l += Level(offset)
+	return nil
 }
 
 func LevelAlignedString(l slog.Level) string {
-	switch l {
+	switch Level(l) {
 	case LevelTrace:
 		return "TRACE"
-	case slog.LevelDebug:
+	case LevelDebug:
 		return "DEBUG"
-	case slog.LevelInfo:
+	case LevelInfo:
 		return "INFO "
-	case slog.LevelWarn:
+	case LevelWarn:
 		return "WARN "
-	case slog.LevelError:
+	case LevelError:
 		return "ERROR"
 	case LevelFatal:
 		return "FATAL"
 	default:
 		return "unknown level"
-	}
-}
-
-func LevelString(l slog.Level) string {
-	switch l {
-	case LevelTrace:
-		return "trace"
-	case slog.LevelDebug:
-		return "debug"
-	case slog.LevelInfo:
-		return "info"
-	case slog.LevelWarn:
-		return "warn"
-	case slog.LevelError:
-		return "eror"
-	case LevelFatal:
-		return "crit"
-	default:
-		return "unknown"
 	}
 }
 
@@ -163,7 +200,7 @@ func (l *logger) Enabled(ctx context.Context, level slog.Level) bool {
 }
 
 func (l *logger) Trace(msg string, ctx ...interface{}) {
-	l.Write(LevelTrace, msg, ctx...)
+	l.Write(-8, msg, ctx...)
 }
 
 func (l *logger) Debug(msg string, ctx ...interface{}) {
@@ -183,6 +220,6 @@ func (l *logger) Error(msg string, ctx ...interface{}) {
 }
 
 func (l *logger) Fatal(msg string, ctx ...interface{}) {
-	l.Write(LevelFatal, msg, ctx...)
+	l.Write(12, msg, ctx...)
 	os.Exit(1)
 }

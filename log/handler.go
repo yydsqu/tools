@@ -8,15 +8,13 @@ import (
 )
 
 type TerminalHandler struct {
-	mu       sync.Mutex
-	wr       io.Writer
-	lvl      slog.Level
-	useColor bool
-	attrs    []slog.Attr
-
+	mu           sync.Mutex
+	wr           io.Writer
+	lvl          slog.Level
+	useColor     bool
+	attrs        []slog.Attr
 	fieldPadding map[string]int
-
-	buf []byte
+	buf          []byte
 }
 
 func (t *TerminalHandler) Handle(_ context.Context, r slog.Record) error {
@@ -56,10 +54,10 @@ func NewTerminalHandler(wr io.Writer, useColor bool) *TerminalHandler {
 	return NewTerminalHandlerWithLevel(wr, LevelTrace, useColor)
 }
 
-func NewTerminalHandlerWithLevel(wr io.Writer, lvl slog.Level, useColor bool) *TerminalHandler {
+func NewTerminalHandlerWithLevel(wr io.Writer, lvl Level, useColor bool) *TerminalHandler {
 	return &TerminalHandler{
 		wr:           wr,
-		lvl:          lvl,
+		lvl:          slog.Level(lvl),
 		useColor:     useColor,
 		fieldPadding: make(map[string]int),
 	}

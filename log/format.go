@@ -28,16 +28,16 @@ func (t *TerminalHandler) format(buf []byte, r slog.Record, useColor bool) []byt
 	msg := escapeMessage(r.Message)
 	var color = ""
 	if useColor {
-		switch r.Level {
+		switch Level(r.Level) {
 		case LevelFatal:
 			color = "\x1b[35m"
-		case slog.LevelError:
+		case LevelError:
 			color = "\x1b[31m"
-		case slog.LevelWarn:
+		case LevelWarn:
 			color = "\x1b[33m"
-		case slog.LevelInfo:
+		case LevelInfo:
 			color = "\x1b[32m"
-		case slog.LevelDebug:
+		case LevelDebug:
 			color = "\x1b[36m"
 		case LevelTrace:
 			color = "\x1b[34m"

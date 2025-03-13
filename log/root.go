@@ -25,7 +25,7 @@ func Root() Logger {
 }
 
 func Trace(msg string, ctx ...any) {
-	Root().Write(LevelTrace, msg, ctx...)
+	Root().Write(slog.Level(LevelTrace), msg, ctx...)
 }
 
 func Debug(msg string, ctx ...any) {
@@ -45,7 +45,7 @@ func Error(msg string, ctx ...any) {
 }
 
 func Fatal(msg string, ctx ...any) {
-	Root().Write(LevelFatal, msg, ctx...)
+	Root().Write(slog.Level(LevelFatal), msg, ctx...)
 	os.Exit(1)
 }
 
