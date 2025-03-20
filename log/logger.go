@@ -34,7 +34,7 @@ func (l Level) String() string {
 	}
 	switch {
 	case l < LevelDebug:
-		return str("TRACE", l-LevelDebug)
+		return str("TRACE", l-LevelTrace)
 	case l < LevelInfo:
 		return str("DEBUG", l-LevelDebug)
 	case l < LevelWarn:
@@ -90,7 +90,7 @@ func (l *Level) parse(s string) (err error) {
 	}
 	switch strings.ToUpper(name) {
 	case "TRACE":
-		*l = LevelDebug
+		*l = LevelTrace
 	case "DEBUG":
 		*l = LevelDebug
 	case "INFO":
