@@ -3,7 +3,8 @@ package utils
 import (
 	"context"
 	"fmt"
-	"runtime/debug"
+	"github.com/yydsqu/tools/log"
+	"runtime"
 	"sync"
 )
 
@@ -78,9 +79,11 @@ func (sw *SingleWorker) Wait() error {
 
 func (sw *SingleWorker) start() {
 	if sw.running {
+		log.Trace("worker is already running")
 		return
 	}
 	if sw.handle == nil {
+		log.Trace("worker handle is nil")
 		return
 	}
 	// 等待其他进程退出
@@ -92,8 +95,10 @@ func (sw *SingleWorker) start() {
 
 	go func() {
 		defer func() {
-			if r := recover(); r != nil {
-				sw.err = fmt.Errorf("%v\n%s", r, string(debug.Stack()))
+			if err := Recover(); err != nil {
+				fmt.Println(err)
+				log.Error("worker recover panic", "err", err)
+				sw.err = err
 			}
 			sw.wg.Done()
 			sw.Stop()
@@ -111,4 +116,19 @@ func NewSingleWorker(handle Handle) *SingleWorker {
 		wg:     &sync.WaitGroup{},
 	}
 	return sw
+}
+
+func Recover() error {
+	if r := recover(); r != nil {
+		buf := make([]byte, 1024)
+		n := runtime.Stack(buf, false)
+		return fmt.Errorf("panic: %v\nstack trace:\n%s", r, buf[:n])
+	}
+	return nil
+}
+
+func PrintStack() {
+	buf := make([]byte, 1024)
+	n := runtime.Stack(buf, false)
+	fmt.Printf("stack trace:\n%s\n", buf[:n])
 }

@@ -14,6 +14,7 @@ func Test1(t *testing.T) {
 		Factor:  1.75,
 		Jitter:  true,
 	}
+
 	for i := 0; i < 100; i++ {
 		fmt.Println(b.Duration())
 	}
