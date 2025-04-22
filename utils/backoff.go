@@ -3,63 +3,38 @@ package utils
 import (
 	"math"
 	"math/rand"
-	"sync/atomic"
+	"sync"
 	"time"
 )
 
 type Backoff struct {
-	attempt uint64
-	Factor  float64
-	Jitter  bool
-	Min     time.Duration
-	Max     time.Duration
+	min  time.Duration
+	max  time.Duration
+	curr time.Duration
+	mu   sync.Mutex
+	rng  *rand.Rand
 }
 
-func (b *Backoff) Duration() time.Duration {
-	d := b.ForAttempt(float64(atomic.AddUint64(&b.attempt, 1) - 1))
-	return d
+func NewBackoff(min, max time.Duration) *Backoff {
+	return &Backoff{
+		min:  min,
+		max:  max,
+		curr: min,
+		rng:  rand.New(rand.NewSource(time.Now().UnixNano())),
+	}
+}
+
+func (b *Backoff) Next() time.Duration {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	jitter := b.min + time.Duration(b.rng.Int63n(int64(b.curr-b.min)+1))
+	next := time.Duration(math.Min(float64(b.curr*2), float64(b.max)))
+	b.curr = next
+	return jitter
 }
 
 func (b *Backoff) Reset() {
-	atomic.StoreUint64(&b.attempt, 0)
-}
-
-func (b *Backoff) Attempt() float64 {
-	return float64(atomic.LoadUint64(&b.attempt))
-}
-
-const maxInt64 = float64(math.MaxInt64 - 512)
-
-func (b *Backoff) ForAttempt(attempt float64) time.Duration {
-	duration := b.Min
-	if duration <= 0 {
-		duration = 100 * time.Millisecond
-	}
-	m := b.Max
-	if m <= 0 {
-		m = 15 * time.Second
-	}
-	if duration >= m {
-		return m
-	}
-	factor := b.Factor
-	if factor <= 0 {
-		factor = 2
-	}
-	minf := float64(duration)
-	durf := minf * math.Pow(factor, attempt)
-	if b.Jitter {
-		durf = rand.Float64()*(durf-minf) + minf
-	}
-	if durf > maxInt64 {
-		return m
-	}
-	dur := time.Duration(durf)
-	if dur < duration {
-		return duration
-	}
-	if dur > m {
-		return m
-	}
-	return dur
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.curr = b.min
 }
