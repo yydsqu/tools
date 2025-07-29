@@ -49,7 +49,7 @@ func isVirtualInterface(iface string) bool {
 	return false
 }
 
-func LoadLocalDialer(IsPrivate bool) ([]Dial, error) {
+func LoadLocalDialer(ctx context.Context, IsPrivate bool) ([]Dial, error) {
 	var (
 		wg         sync.WaitGroup
 		mutex      sync.Mutex
@@ -91,7 +91,7 @@ func LoadLocalDialer(IsPrivate bool) ([]Dial, error) {
 					LocalAddr: &net.TCPAddr{IP: ip},
 					Control:   Control,
 				}
-				conn, err := dialer.Dial("tcp", DefaultTarget)
+				conn, err := dialer.DialContext(ctx, "tcp", DefaultTarget)
 				if err != nil {
 					log.Trace("test dialer failed", "ip", ip.String())
 					return
@@ -206,12 +206,12 @@ func (c *PollingClient) Get(url string) (*http.Response, error) {
 	return c.clients[c.index.Add(1)%int64(len(c.clients))].Get(url)
 }
 
-func LoadPollingClient(IsPrivate bool, proxyUrls ...string) *PollingClient {
+func LoadPollingClient(ctx context.Context, IsPrivate bool, proxyUrls ...string) *PollingClient {
 	cli := &PollingClient{
 		clients: nil,
 		index:   atomic.Int64{},
 	}
-	local, err := LoadLocalDialer(IsPrivate)
+	local, err := LoadLocalDialer(ctx, IsPrivate)
 	if err != nil {
 		cli.clients = append(cli.clients, http.DefaultClient)
 		return cli

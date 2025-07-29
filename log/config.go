@@ -24,14 +24,15 @@ func (d *Duration) UnmarshalJSON(bytes []byte) error {
 }
 
 type Config struct {
-	LogLevel                Level            `json:"level"`
-	LogUseColor             bool             `json:"use_color"`
-	LogNotifyName           string           `json:"notify_name"`
-	LogNotifyLevel          Level            `json:"notify_level"`
-	LogNotifyThreshold      int              `json:"notify_threshold"`
-	LogNotifyEvaluatePeriod Duration         `json:"notify_evaluate_period"`
-	LogNotifyPeriod         Duration         `json:"notify_period"`
-	LogNotify               *notify.WxPusher `json:"notify,omitempty"`
+	Output                  string           `json:"output" toml:"output"`
+	LogLevel                Level            `json:"level" toml:"level"`
+	LogUseColor             bool             `json:"use_color" toml:"use_color"`
+	LogNotifyName           string           `json:"notify_name" toml:"notify_name"`
+	LogNotifyLevel          Level            `json:"notify_level" toml:"notify_level"`
+	LogNotifyThreshold      int              `json:"notify_threshold" toml:"notify_threshold"`
+	LogNotifyEvaluatePeriod Duration         `json:"notify_evaluate_period" toml:"notify_evaluate_period"`
+	LogNotifyPeriod         Duration         `json:"notify_period" toml:"notify_period"`
+	LogNotify               *notify.WxPusher `json:"notify,omitempty" toml:"notify"`
 }
 
 func (conf *Config) LogHandler() (handler slog.Handler) {

@@ -130,10 +130,10 @@ func FormatSlogValue(v slog.Value, tmp []byte) (result []byte) {
 	switch v.Kind() {
 	case slog.KindString:
 		return appendEscapeString(tmp, v.String())
-	case slog.KindInt64: // All int-types (int8, int16 etc) wind up here
-		return appendInt64(tmp, v.Int64())
-	case slog.KindUint64: // All uint-types (uint8, uint16 etc) wind up here
-		return appendUint64(tmp, v.Uint64(), false)
+	case slog.KindInt64:
+		return strconv.AppendInt(tmp, v.Int64(), 10)
+	case slog.KindUint64:
+		return strconv.AppendUint(tmp, v.Uint64(), 10)
 	case slog.KindFloat64:
 		return strconv.AppendFloat(tmp, v.Float64(), floatFormat, 3, 64)
 	case slog.KindBool:
@@ -141,9 +141,6 @@ func FormatSlogValue(v slog.Value, tmp []byte) (result []byte) {
 	case slog.KindDuration:
 		value = v.Duration()
 	case slog.KindTime:
-		// Performance optimization: No need for escaping since the provided
-		// timeFormat doesn't have any escape characters, and escaping is
-		// expensive.
 		return v.Time().AppendFormat(tmp, timeFormat)
 	default:
 		value = v.Any()
@@ -153,7 +150,7 @@ func FormatSlogValue(v slog.Value, tmp []byte) (result []byte) {
 	}
 	switch v := value.(type) {
 	case *big.Int:
-		return appendBigInt(tmp, v)
+		return appendEscapeString(tmp, v.String())
 	case error:
 		return appendEscapeString(tmp, v.Error())
 	case TerminalStringer:
@@ -162,96 +159,18 @@ func FormatSlogValue(v slog.Value, tmp []byte) (result []byte) {
 		return appendEscapeString(tmp, v.String())
 	}
 
-	// We can use the 'tmp' as a scratch-buffer, to first format the
-	// value, and in a second step do escaping.
 	internal := fmt.Appendf(tmp, "%+v", value)
 	return appendEscapeString(tmp, string(internal))
-}
-
-func appendInt64(dst []byte, n int64) []byte {
-	if n < 0 {
-		return appendUint64(dst, uint64(-n), true)
-	}
-	return appendUint64(dst, uint64(n), false)
-}
-
-func appendUint64(dst []byte, n uint64, neg bool) []byte {
-	if n < 100000 {
-		if neg {
-			return strconv.AppendInt(dst, -int64(n), 10)
-		} else {
-			return strconv.AppendInt(dst, int64(n), 10)
-		}
-	}
-	const maxLength = 26
-
-	var (
-		out   = make([]byte, maxLength)
-		i     = maxLength - 1
-		comma = 0
-	)
-	for ; n > 0; i-- {
-		if comma == 3 {
-			comma = 0
-			out[i] = ','
-		} else {
-			comma++
-			out[i] = '0' + byte(n%10)
-			n /= 10
-		}
-	}
-	if neg {
-		out[i] = '-'
-		i--
-	}
-	return append(dst, out[i+1:]...)
-}
-
-func appendBigInt(dst []byte, n *big.Int) []byte {
-	if n.IsUint64() {
-		return appendUint64(dst, n.Uint64(), false)
-	}
-	if n.IsInt64() {
-		return appendInt64(dst, n.Int64())
-	}
-
-	var (
-		text  = n.String()
-		buf   = make([]byte, len(text)+len(text)/3)
-		comma = 0
-		i     = len(buf) - 1
-	)
-	for j := len(text) - 1; j >= 0; j, i = j-1, i-1 {
-		c := text[j]
-
-		switch {
-		case c == '-':
-			buf[i] = c
-		case comma == 3:
-			buf[i] = ','
-			i--
-			comma = 0
-			fallthrough
-		default:
-			buf[i] = c
-			comma++
-		}
-	}
-	return append(dst, buf[i+1:]...)
 }
 
 func appendEscapeString(dst []byte, s string) []byte {
 	needsQuoting := false
 	needsEscaping := false
 	for _, r := range s {
-		// If it contains spaces or equal-sign, we need to quote it.
 		if r == ' ' || r == '=' {
 			needsQuoting = true
 			continue
 		}
-		// We need to escape it, if it contains
-		// - character " (0x22) and lower (except space)
-		// - characters above ~ (0x7E), plus equal-sign
 		if r <= '"' || r > '~' {
 			needsEscaping = true
 			break
@@ -260,8 +179,6 @@ func appendEscapeString(dst []byte, s string) []byte {
 	if needsEscaping {
 		return strconv.AppendQuote(dst, s)
 	}
-	// No escaping needed, but we might have to place within quote-marks, in case
-	// it contained a space
 	if needsQuoting {
 		dst = append(dst, '"')
 		dst = append(dst, []byte(s)...)
@@ -273,12 +190,9 @@ func appendEscapeString(dst []byte, s string) []byte {
 func escapeMessage(s string) string {
 	needsQuoting := false
 	for _, r := range s {
-		// Allow CR/LF/TAB. This is to make multi-line messages work.
 		if r == '\r' || r == '\n' || r == '\t' {
 			continue
 		}
-		// We quote everything below <space> (0x20) and above~ (0x7E),
-		// plus equal-sign
 		if r < ' ' || r > '~' || r == '=' {
 			needsQuoting = true
 			break
