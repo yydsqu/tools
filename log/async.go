@@ -72,10 +72,10 @@ type AsyncFileWriter struct {
 	maxBackups  int
 }
 
-func NewAsyncFileWriter(filePath string, maxBytesSize int64, maxBackups int, rotateHours uint) *AsyncFileWriter {
+func NewAsyncFileWriter(filePath string, maxBytesSize int64, maxBackups int, rotateHours uint) (*AsyncFileWriter, error) {
 	absFilePath, err := filepath.Abs(filePath)
 	if err != nil {
-		panic(fmt.Sprintf("get file path of logger error. filePath=%s, err=%s", filePath, err))
+		return nil, fmt.Errorf("get file path of logger error. filePath=%s, err=%s", filePath, err)
 	}
 	asyncFileWriter := &AsyncFileWriter{
 		filePath:    absFilePath,
@@ -86,9 +86,9 @@ func NewAsyncFileWriter(filePath string, maxBytesSize int64, maxBackups int, rot
 		timeTicker:  NewTimeTicker(rotateHours),
 	}
 	if err = asyncFileWriter.Start(); err != nil {
-		panic(fmt.Sprintf("file writer start error. filePath=%s, err=%s", filePath, err))
+		return nil, fmt.Errorf("file writer start error. filePath=%s, err=%s", filePath, err)
 	}
-	return asyncFileWriter
+	return asyncFileWriter, nil
 }
 
 func (w *AsyncFileWriter) initLogFile() error {
