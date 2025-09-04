@@ -27,6 +27,7 @@ type TerminalStringer interface {
 func (t *TerminalHandler) format(buf []byte, r slog.Record, useColor bool) []byte {
 	msg := escapeMessage(r.Message)
 	var color = ""
+
 	if useColor {
 		switch Level(r.Level) {
 		case LevelFatal:
@@ -43,9 +44,11 @@ func (t *TerminalHandler) format(buf []byte, r slog.Record, useColor bool) []byt
 			color = "\x1b[34m"
 		}
 	}
+
 	if buf == nil {
 		buf = make([]byte, 0, 30+termMsgJust)
 	}
+
 	b := bytes.NewBuffer(buf)
 
 	if color != "" {
@@ -60,6 +63,7 @@ func (t *TerminalHandler) format(buf []byte, r slog.Record, useColor bool) []byt
 	b.WriteString("] ")
 	b.WriteString(msg)
 	length := len(msg)
+
 	if (r.NumAttrs()+len(t.attrs)) > 0 && length < termMsgJust {
 		b.Write(spaces[:termMsgJust-length])
 	}
@@ -70,8 +74,6 @@ func (t *TerminalHandler) format(buf []byte, r slog.Record, useColor bool) []byt
 }
 
 func (t *TerminalHandler) formatAttributes(buf *bytes.Buffer, r slog.Record, color string) {
-	// tmp is a temporary buffer we use, until bytes.Buffer.AvailableBuffer() (1.21)
-	// can be used.
 	var tmp = make([]byte, 40)
 	writeAttr := func(attr slog.Attr, first, last bool) {
 		buf.WriteByte(' ')
@@ -177,7 +179,7 @@ func appendEscapeString(dst []byte, s string) []byte {
 		}
 	}
 	if needsEscaping {
-		return strconv.AppendQuote(dst, s)
+		return append(dst, []byte(s)...)
 	}
 	if needsQuoting {
 		dst = append(dst, '"')
@@ -201,7 +203,7 @@ func escapeMessage(s string) string {
 	if !needsQuoting {
 		return s
 	}
-	return strconv.Quote(s)
+	return s
 }
 
 func writeTimeTermFormat(buf *bytes.Buffer, t time.Time) {
