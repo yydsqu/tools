@@ -11,6 +11,7 @@ type Backoff struct {
 	min  time.Duration
 	max  time.Duration
 	curr time.Duration
+	last time.Time
 	mu   sync.Mutex
 	rng  *rand.Rand
 }
@@ -27,9 +28,13 @@ func NewBackoff(min, max time.Duration) *Backoff {
 func (b *Backoff) Next() time.Duration {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	if time.Since(b.last) > b.max {
+		b.curr = b.min
+	}
 	jitter := b.min + time.Duration(b.rng.Int63n(int64(b.curr-b.min)+1))
 	next := time.Duration(math.Min(float64(b.curr*2), float64(b.max)))
 	b.curr = next
+	b.last = time.Now()
 	return jitter
 }
 
