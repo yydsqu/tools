@@ -1,6 +1,7 @@
 package log
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"os"
@@ -10,7 +11,7 @@ import (
 	"time"
 )
 
-const backupTimeFormat = "2006-01-02_15"
+const backupTimeFormat = "2006_01_02_15"
 
 type TimeTicker struct {
 	stop chan struct{}
@@ -18,35 +19,35 @@ type TimeTicker struct {
 }
 
 func NewTimeTicker(rotateHours uint) *TimeTicker {
-	ch := make(chan time.Time)
+	rotateHours = cmp.Or(rotateHours, 24)
+	ch := make(chan time.Time, 1)
 	tt := TimeTicker{
 		stop: make(chan struct{}),
 		C:    ch,
 	}
-
-	if rotateHours > 0 {
-		tt.startTicker(ch, rotateHours)
-	}
-
+	tt.startTicker(ch, rotateHours)
 	return &tt
 }
 
 func (tt *TimeTicker) Stop() {
-	tt.stop <- struct{}{}
+	select {
+	case <-tt.stop:
+	default:
+		close(tt.stop)
+	}
 }
 
 func (tt *TimeTicker) startTicker(ch chan time.Time, rotateHours uint) {
 	go func() {
-		nextRotationHour := getNextRotationHour(time.Now(), rotateHours)
-		ticker := time.NewTicker(time.Second)
-		defer ticker.Stop()
+		timer := time.NewTimer(0)
+		defer timer.Stop()
 		for {
 			select {
-			case t := <-ticker.C:
-				if t.Hour() == nextRotationHour {
-					ch <- t
-					nextRotationHour = getNextRotationHour(time.Now(), rotateHours)
-				}
+			case t := <-timer.C:
+				ch <- t
+				now := time.Now()
+				next := nextAlignedTime(now, rotateHours)
+				timer.Reset(next.Sub(now))
 			case <-tt.stop:
 				return
 			}
@@ -54,8 +55,13 @@ func (tt *TimeTicker) startTicker(ch chan time.Time, rotateHours uint) {
 	}()
 }
 
-func getNextRotationHour(now time.Time, delta uint) int {
-	return now.Add(time.Hour * time.Duration(delta)).Hour()
+func nextAlignedTime(now time.Time, rotateHours uint) time.Time {
+	next := now.Truncate(time.Hour).Add(time.Hour)
+	rh := int(rotateHours)
+	if m := next.Hour() % rh; m != 0 {
+		next = next.Add(time.Duration(rh-m) * time.Hour)
+	}
+	return time.Date(next.Year(), next.Month(), next.Day(), next.Hour(), 0, 0, 0, next.Location())
 }
 
 type AsyncFileWriter struct {
@@ -77,6 +83,13 @@ func NewAsyncFileWriter(filePath string, maxBytesSize int64, maxBackups int, rot
 	if err != nil {
 		return nil, fmt.Errorf("get file path of logger error. filePath=%s, err=%s", filePath, err)
 	}
+	if _, err = os.Stat(filepath.Dir(absFilePath)); os.IsNotExist(err) {
+		if err = os.MkdirAll(filepath.Dir(absFilePath), os.ModePerm); err != nil {
+			return nil, fmt.Errorf("mkdir error path=%s, err=%s", filepath.Dir(absFilePath), err)
+		}
+	}
+
+	// 整点切换目录
 	asyncFileWriter := &AsyncFileWriter{
 		filePath:    absFilePath,
 		buf:         make(chan []byte, maxBytesSize),
@@ -85,9 +98,11 @@ func NewAsyncFileWriter(filePath string, maxBytesSize int64, maxBackups int, rot
 		maxBackups:  maxBackups,
 		timeTicker:  NewTimeTicker(rotateHours),
 	}
+
 	if err = asyncFileWriter.Start(); err != nil {
 		return nil, fmt.Errorf("file writer start error. filePath=%s, err=%s", filePath, err)
 	}
+
 	return asyncFileWriter, nil
 }
 
@@ -97,6 +112,10 @@ func (w *AsyncFileWriter) initLogFile() error {
 		err error
 	)
 	realFilePath := w.timeFilePath(w.filePath)
+	// 检查目录是否存在
+	if _, err = os.Stat(filepath.Dir(realFilePath)); os.IsNotExist(err) {
+		_ = os.MkdirAll(filepath.Dir(realFilePath), os.ModePerm)
+	}
 	fd, err = os.OpenFile(realFilePath, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0644)
 	if err != nil {
 		return err
@@ -109,10 +128,7 @@ func (w *AsyncFileWriter) initLogFile() error {
 			return err
 		}
 	}
-	err = os.Symlink(realFilePath, w.filePath)
-	if err != nil {
-		return err
-	}
+	os.Symlink(realFilePath, w.filePath)
 	return nil
 }
 
