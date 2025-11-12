@@ -9,13 +9,15 @@ import (
 var root atomic.Value
 
 func init() {
-	defaultLogger := &logger{slog.New(NewTerminalHandler(os.Stdout, true))}
+	defaultLogger := &Log{
+		inner: slog.New(NewTerminalHandler(os.Stdout, true)),
+	}
 	SetDefault(defaultLogger)
 }
 
 func SetDefault(l Logger) {
 	root.Store(l)
-	if lg, ok := l.(*logger); ok {
+	if lg, ok := l.(*Log); ok {
 		slog.SetDefault(lg.inner)
 	}
 }
