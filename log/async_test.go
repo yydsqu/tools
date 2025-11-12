@@ -1,15 +1,22 @@
 package log
 
 import (
-	"fmt"
 	"testing"
-	"time"
 )
 
 func TestNewAsyncFileWriter(t *testing.T) {
-	now := time.Now()
-	for i := 0; i < 72; i++ {
-		de := now.Add(time.Duration(i) * time.Hour)
-		fmt.Println(nextAlignedTime(de, 1))
+	config := Config{
+		Output:     "./logs/log.log",
+		UseColor:   false,
+		MaxBackups: 1,
 	}
+	log, err := config.Logger()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer config.asyncFileWriter.Stop()
+	log.Info("11111111111111111111")
+	config.asyncFileWriter.timeTimer.Reset(0)
+	log.Info("33333333333333333333333333")
+
 }
