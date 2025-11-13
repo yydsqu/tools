@@ -106,13 +106,6 @@ func (w *AsyncFileWriter) flushBuffer() {
 }
 
 func (w *AsyncFileWriter) write(msg []byte) {
-	w.rotateFile()
-	if w.fd != nil {
-		w.fd.Write(msg)
-	}
-}
-
-func (w *AsyncFileWriter) rotateFile() {
 	select {
 	case now := <-w.timeTimer.C:
 		if err := w.flushAndClose(); err != nil {
@@ -124,11 +117,10 @@ func (w *AsyncFileWriter) rotateFile() {
 		if err := w.removeExpiredFile(); err != nil {
 			fmt.Fprintf(os.Stderr, "remove expired file error. err=%s", err)
 		}
-		// 重设下次更新
 		date := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local).Add(DAY)
 		w.timeTimer.Reset(date.Sub(now))
 	default:
-
+		w.fd.Write(msg)
 	}
 }
 
@@ -195,7 +187,6 @@ func (w *AsyncFileWriter) removeExpiredFile() error {
 			os.Remove(filePath)
 		}
 	}
-
 	return nil
 }
 
