@@ -8,7 +8,9 @@ import (
 )
 
 var (
-	ErrorRestart = errors.New("worker restart")
+	Canceled = errors.New("context canceled")
+	Restart  = errors.New("context restart")
+	Finish   = errors.New("context done")
 )
 
 type Handle func(ctx context.Context)
@@ -28,7 +30,7 @@ func (sw *SingleWorker) Stop(err error) {
 }
 
 func (sw *SingleWorker) Restart() {
-	sw.cancel(ErrorRestart)
+	sw.cancel(Restart)
 	<-sw.ctx.Done()
 	sw.Start()
 }
