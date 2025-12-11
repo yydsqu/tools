@@ -80,16 +80,16 @@ func RacerWithContext[R any](ctx context.Context, tasks ...func(ctx context.Cont
 
 // RacerWithCancel
 // 获取到任意成功的结果自动取消其他任务
-func RacerWithCancel[T any](parentCtx context.Context, tasks ...func(ctx context.Context) (T, error)) (T, error) {
-	ctx, cancel := context.WithCancel(parentCtx)
+func RacerWithCancel[T any](parent context.Context, tasks ...func(ctx context.Context) (T, error)) (T, error) {
+	ctx, cancel := context.WithCancel(parent)
 	defer cancel()
 	return RacerWithContext(ctx, tasks...)
 }
 
 // RacerWithTimeout
 // 控制总超时时间
-func RacerWithTimeout[T any](timeout time.Duration, tasks ...func(ctx context.Context) (T, error)) (T, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+func RacerWithTimeout[T any](parent context.Context, timeout time.Duration, tasks ...func(ctx context.Context) (T, error)) (T, error) {
+	ctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
 	return RacerWithContext(ctx, tasks...)
 }

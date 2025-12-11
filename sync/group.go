@@ -91,8 +91,8 @@ func GroupWithCancel[T any](parentCtx context.Context, tasks ...func(ctx context
 
 // GroupWithTimeout
 // 控制总超时时间
-func GroupWithTimeout[T any](timeout time.Duration, tasks ...func(ctx context.Context) (T, error)) ([]T, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+func GroupWithTimeout[T any](parent context.Context, timeout time.Duration, tasks ...func(ctx context.Context) (T, error)) ([]T, error) {
+	ctx, cancel := context.WithTimeout(parent, timeout)
 	defer cancel()
 	return GroupWithContext(ctx, tasks...)
 }
