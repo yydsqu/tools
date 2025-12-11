@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -31,4 +32,11 @@ func TestRacer(t *testing.T) {
 	}
 
 	time.Sleep(time.Minute * 100)
+}
+
+func TestName(t *testing.T) {
+	var err error
+	var err1 error
+
+	fmt.Println(errors.Join(err, err1))
 }
