@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"github.com/yydsqu/tools/logger"
+	"github.com/yydsqu/tools/log"
 	"net"
 	"net/http"
 	"strings"
@@ -97,13 +97,13 @@ func LoadLocalDialer(ctx context.Context, IsPrivate bool) ([]Dial, error) {
 				}
 				conn, err := dialer.DialContext(ctx, "tcp", DefaultTarget)
 				if err != nil {
-					logger.Trace("test dialer failed", "ip", ip.String())
+					log.Trace("test dialer failed", "ip", ip.String())
 					return
 				}
 				defer conn.Close()
 				mutex.Lock()
 				defer mutex.Unlock()
-				logger.Trace("test dialer successful", "ip", ip.String())
+				log.Trace("test dialer successful", "ip", ip.String())
 				available = append(available, &Local{
 					ip:   ip,
 					dial: dialer,
@@ -116,7 +116,7 @@ func LoadLocalDialer(ctx context.Context, IsPrivate bool) ([]Dial, error) {
 		return nil, fmt.Errorf("no valid network interfaces found")
 	}
 
-	logger.Trace("load available ip successful", "len", len(available))
+	log.Trace("load available ip successful", "len", len(available))
 
 	return available, nil
 }
