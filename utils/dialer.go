@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"github.com/yydsqu/tools/log"
+	"github.com/yydsqu/tools/logger"
 	"net"
 	"net/http"
 	"strings"
@@ -17,6 +17,10 @@ var (
 	DefaultTarget          = "1.1.1.1:80"
 	DefaultVirtualPrefixes = []string{"lo", "docker", "br-", "veth", "tun", "tap", "virbr", "VMware"}
 )
+
+type HTTPClient interface {
+	Do(req *http.Request) (*http.Response, error)
+}
 
 type Dial interface {
 	DialContext(ctx context.Context, network, address string) (net.Conn, error)
@@ -93,13 +97,13 @@ func LoadLocalDialer(ctx context.Context, IsPrivate bool) ([]Dial, error) {
 				}
 				conn, err := dialer.DialContext(ctx, "tcp", DefaultTarget)
 				if err != nil {
-					log.Trace("test dialer failed", "ip", ip.String())
+					logger.Trace("test dialer failed", "ip", ip.String())
 					return
 				}
 				defer conn.Close()
 				mutex.Lock()
 				defer mutex.Unlock()
-				log.Trace("test dialer successful", "ip", ip.String())
+				logger.Trace("test dialer successful", "ip", ip.String())
 				available = append(available, &Local{
 					ip:   ip,
 					dial: dialer,
@@ -112,7 +116,7 @@ func LoadLocalDialer(ctx context.Context, IsPrivate bool) ([]Dial, error) {
 		return nil, fmt.Errorf("no valid network interfaces found")
 	}
 
-	log.Trace("load available ip successful", "len", len(available))
+	logger.Trace("load available ip successful", "len", len(available))
 
 	return available, nil
 }

@@ -1,4 +1,4 @@
-package log
+package logger
 
 import (
 	"errors"
@@ -77,7 +77,9 @@ func (w *AsyncFileWriter) Start() error {
 	if err := w.initLogFile(); err != nil {
 		return err
 	}
+
 	w.wg.Add(1)
+
 	go func() {
 		defer func() {
 			w.flushBuffer()
