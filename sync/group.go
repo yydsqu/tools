@@ -5,60 +5,22 @@ import (
 	"errors"
 	"fmt"
 	"runtime/debug"
-	"time"
+	"sync"
 )
-
-// Group
-// 等待获取全部异步结果
-func Group[T any](tasks ...func() (T, error)) ([]T, error) {
-	var (
-		ch      = make(chan *Result[T], len(tasks))
-		results []T
-		errs    []error
-	)
-
-	for _, task := range tasks {
-		go func(fn func() (T, error)) {
-			defer func() {
-				if recove := recover(); recove != nil {
-					select {
-					case ch <- &Result[T]{Err: fmt.Errorf("panic: %v\n stack:%s", recove, debug.Stack())}:
-					default:
-					}
-				}
-			}()
-			r, err := fn()
-			select {
-			case ch <- &Result[T]{r, err}:
-			default:
-
-			}
-		}(task)
-	}
-
-	for i := 0; i < len(tasks); i++ {
-		r := <-ch
-		if r.Err == nil {
-			results = append(results, r.Val)
-		} else {
-			errs = append(errs, r.Err)
-		}
-	}
-
-	return results, errors.Join(errs...)
-}
 
 // GroupWithContext
 // 获取到任意成功的结果但是不自动取消其他任务
-func GroupWithContext[T any](ctx context.Context, tasks ...func(ctx context.Context) (T, error)) ([]T, error) {
-	var (
-		ch      = make(chan *Result[T], len(tasks))
-		results []T
-		errs    []error
-	)
+func GroupWithContext[T any](ctx context.Context, fns ...func(ctx context.Context) (T, error)) ([]T, error) {
+	if len(fns) == 0 {
+		return nil, nil
+	}
+	wg := sync.WaitGroup{}
+	ch := make(chan *Result[T], len(fns))
 
-	for _, task := range tasks {
+	for _, fn := range fns {
+		wg.Add(1)
 		go func(fn func(ctx context.Context) (T, error)) {
+			defer wg.Done()
 			defer func() {
 				if recove := recover(); recove != nil {
 					ch <- &Result[T]{Err: fmt.Errorf("panic: %v\n stack:%s", recove, debug.Stack())}
@@ -66,11 +28,18 @@ func GroupWithContext[T any](ctx context.Context, tasks ...func(ctx context.Cont
 			}()
 			r, err := fn(ctx)
 			ch <- &Result[T]{r, err}
-		}(task)
+		}(fn)
 	}
 
-	for i := 0; i < len(tasks); i++ {
-		r := <-ch
+	go func() {
+		wg.Wait()
+		close(ch)
+	}()
+
+	results := make([]T, 0, len(fns))
+	errs := make([]error, 0)
+
+	for r := range ch {
 		if r.Err == nil {
 			results = append(results, r.Val)
 		} else {
@@ -81,18 +50,48 @@ func GroupWithContext[T any](ctx context.Context, tasks ...func(ctx context.Cont
 	return results, errors.Join(errs...)
 }
 
-// GroupWithCancel
-// 自动取消任务的
-func GroupWithCancel[T any](parentCtx context.Context, tasks ...func(ctx context.Context) (T, error)) ([]T, error) {
-	ctx, cancel := context.WithCancel(parentCtx)
-	defer cancel()
-	return GroupWithContext(ctx, tasks...)
-}
+// GroupGenericWithContext
+// 获取到任意成功的结果但是不自动取消其他任务
+func GroupGenericWithContext[P any, R any](ctx context.Context, seeds []P, fn func(ctx context.Context, seed P) (R, error)) ([]R, error) {
+	if len(seeds) == 0 {
+		return nil, nil
+	}
 
-// GroupWithTimeout
-// 控制总超时时间
-func GroupWithTimeout[T any](parent context.Context, timeout time.Duration, tasks ...func(ctx context.Context) (T, error)) ([]T, error) {
-	ctx, cancel := context.WithTimeout(parent, timeout)
-	defer cancel()
-	return GroupWithContext(ctx, tasks...)
+	wg := sync.WaitGroup{}
+	ch := make(chan *Result[R], len(seeds))
+
+	wg.Add(len(seeds))
+
+	for _, seed := range seeds {
+		go func(ctx context.Context, seed P) {
+			defer wg.Done()
+			defer func() {
+				if rec := recover(); rec != nil {
+					ch <- &Result[R]{
+						Err: fmt.Errorf("panic seed=%v: %v\nstack:\n%s", seed, rec, debug.Stack()),
+					}
+				}
+			}()
+			r, err := fn(ctx, seed)
+			ch <- &Result[R]{r, err}
+		}(ctx, seed)
+	}
+
+	go func() {
+		wg.Wait()
+		close(ch)
+	}()
+
+	results := make([]R, 0, len(seeds))
+	errs := make([]error, 0)
+
+	for r := range ch {
+		if r.Err == nil {
+			results = append(results, r.Val)
+		} else {
+			errs = append(errs, r.Err)
+		}
+	}
+
+	return results, errors.Join(errs...)
 }

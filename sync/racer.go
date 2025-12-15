@@ -5,47 +5,26 @@ import (
 	"errors"
 	"fmt"
 	"runtime/debug"
-	"time"
+	"sync"
 )
 
-// Racer
-// 最简单获取最快的结果
-func Racer[T any](tasks ...func() (T, error)) (T, error) {
-	ch := make(chan *Result[T], len(tasks))
-
-	for _, task := range tasks {
-		go func(fn func() (T, error)) {
-			r, err := fn()
-			ch <- &Result[T]{r, err}
-		}(task)
+// RacerGenericWithContext
+// 获取到任意成功的结果直接返回
+func RacerGenericWithContext[P any, R any](parent context.Context, params []P, fn func(ctx context.Context, param P) (R, error)) (R, error) {
+	var zero R
+	if len(params) == 0 {
+		return zero, nil
 	}
+	ctx, cancel := context.WithCancel(parent)
+	defer cancel()
 
-	var errs []error
-	var zero T
+	var wg sync.WaitGroup
+	ch := make(chan *Result[R], len(params))
 
-	for i := 0; i < len(tasks); i++ {
-		r := <-ch
-		if r.Err == nil {
-			return r.Val, nil
-		}
-		errs = append(errs, r.Err)
-	}
-
-	return zero, errors.Join(errs...)
-}
-
-// RacerWithContext
-// 获取到任意成功的结果但是不自动取消其他任务
-func RacerWithContext[R any](ctx context.Context, tasks ...func(ctx context.Context) (R, error)) (R, error) {
-	var (
-		ch   = make(chan *Result[R])
-		zero R
-		errs []error
-	)
-
-	for _, task := range tasks {
-		go func(fn func(ctx context.Context) (R, error)) {
-			// 控制错误信息
+	for _, param := range params {
+		wg.Add(1)
+		go func(param P) {
+			defer wg.Done()
 			defer func() {
 				if recove := recover(); recove != nil {
 					select {
@@ -54,42 +33,28 @@ func RacerWithContext[R any](ctx context.Context, tasks ...func(ctx context.Cont
 					}
 				}
 			}()
-
-			r, err := fn(ctx)
+			r, err := fn(ctx, param)
 			select {
 			case <-ctx.Done():
+				return
 			case ch <- &Result[R]{r, err}:
 			}
-		}(task)
+		}(param)
 	}
 
-	for i := 0; i < len(tasks); i++ {
-		select {
-		case <-ctx.Done():
-			return zero, ctx.Err()
-		case r := <-ch:
-			if r.Err == nil {
-				return r.Val, nil
-			}
-			errs = append(errs, r.Err)
+	go func() {
+		wg.Wait()
+		close(ch)
+	}()
+
+	errs := make([]error, 0, len(params))
+
+	for r := range ch {
+		if r.Err == nil {
+			return r.Val, nil
 		}
+		errs = append(errs, r.Err)
 	}
 
 	return zero, errors.Join(errs...)
-}
-
-// RacerWithCancel
-// 获取到任意成功的结果自动取消其他任务
-func RacerWithCancel[T any](parent context.Context, tasks ...func(ctx context.Context) (T, error)) (T, error) {
-	ctx, cancel := context.WithCancel(parent)
-	defer cancel()
-	return RacerWithContext(ctx, tasks...)
-}
-
-// RacerWithTimeout
-// 控制总超时时间
-func RacerWithTimeout[T any](parent context.Context, timeout time.Duration, tasks ...func(ctx context.Context) (T, error)) (T, error) {
-	ctx, cancel := context.WithTimeout(parent, timeout)
-	defer cancel()
-	return RacerWithContext(ctx, tasks...)
 }
