@@ -10,36 +10,37 @@ import (
 
 // RacerGenericWithContext
 // 获取到任意成功的结果直接返回
-func RacerGenericWithContext[P any, R any](parent context.Context, params []P, fn func(ctx context.Context, param P) (R, error)) (R, error) {
+func RacerGenericWithContext[P any, R any](parent context.Context, seeds []P, fn func(ctx context.Context, seed P) (R, error)) (R, error) {
 	var zero R
-	if len(params) == 0 {
+	if len(seeds) == 0 {
 		return zero, nil
 	}
 	ctx, cancel := context.WithCancel(parent)
 	defer cancel()
 
 	var wg sync.WaitGroup
-	ch := make(chan *Result[R], len(params))
+	ch := make(chan *Result[R], len(seeds))
 
-	for _, param := range params {
-		wg.Add(1)
-		go func(param P) {
-			defer wg.Done()
-			defer func() {
-				if recove := recover(); recove != nil {
-					select {
-					case <-ctx.Done():
-					case ch <- &Result[R]{Err: fmt.Errorf("panic: %v\n stack:%s", recove, debug.Stack())}:
+	for _, seed := range seeds {
+		wg.Go(func(seed P) func() {
+			return func() {
+				defer func() {
+					if recove := recover(); recove != nil {
+						select {
+						case ch <- &Result[R]{Err: fmt.Errorf("seed:%v\npanic: %v\n stack:%s", seed, recove, debug.Stack())}:
+						case <-ctx.Done():
+						}
 					}
+				}()
+				r, err := fn(ctx, seed)
+				select {
+				case ch <- &Result[R]{r, err}:
+				case <-ctx.Done():
+					return
 				}
-			}()
-			r, err := fn(ctx, param)
-			select {
-			case <-ctx.Done():
-				return
-			case ch <- &Result[R]{r, err}:
+
 			}
-		}(param)
+		}(seed))
 	}
 
 	go func() {
@@ -47,7 +48,7 @@ func RacerGenericWithContext[P any, R any](parent context.Context, params []P, f
 		close(ch)
 	}()
 
-	errs := make([]error, 0, len(params))
+	errs := make([]error, 0, len(seeds))
 
 	for r := range ch {
 		if r.Err == nil {

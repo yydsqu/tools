@@ -8,16 +8,23 @@ import (
 )
 
 func TestGroupGenericWithContext(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
 	res, err := GroupGenericWithContext(
-		context.Background(),
-		[]int{1, 2, 3},
+		ctx,
+		[]int{0, 1, 2, 3, 4, 5, 6, 7, 8},
 		func(ctx context.Context, seed int) (int, error) {
-			time.Sleep(time.Second)
-			return seed, nil
+			select {
+			case <-ctx.Done():
+				return 0, ctx.Err()
+			case <-time.After(time.Duration(seed) * time.Second):
+				return 10 % seed, nil
+			}
 		},
 	)
 	fmt.Println(res)
 	fmt.Println(err)
+	fmt.Println("=================")
 }
 
 func BenchmarkGroupGenericWithContext(b *testing.B) {
