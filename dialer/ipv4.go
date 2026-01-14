@@ -1,18 +1,41 @@
 package dialer
 
 import (
+	"bufio"
+	"cmp"
 	"context"
 	"fmt"
 	sync2 "github.com/yydsqu/tools/sync"
+	"io"
 	"net"
 	"strings"
 	"time"
 )
 
 var (
-	DefaultTarget          = "1.1.1.1:443"
+	DefaultTarget          = "cloudflare.com:80"
+	IPInfoTarget           = "https://cloudflare.com/cdn-cgi/trace"
+	IPIFYV4Target          = "https://api.ipify.org/"
+	IPIFYV6Target          = "https://api6.ipify.org"
 	DefaultVirtualPrefixes = []string{"lo", "docker", "br-", "veth", "tun", "tap", "virbr", "VMware"}
 )
+
+func ParseTrace(r io.Reader) map[string]string {
+	m := make(map[string]string)
+	sc := bufio.NewScanner(r)
+	for sc.Scan() {
+		line := strings.TrimSpace(sc.Text())
+		if line == "" {
+			continue
+		}
+		k, v, ok := strings.Cut(line, "=")
+		if !ok {
+			continue
+		}
+		m[strings.TrimSpace(k)] = strings.TrimSpace(v)
+	}
+	return m
+}
 
 func isVirtualInterface(iface string) bool {
 	for _, prefix := range DefaultVirtualPrefixes {
@@ -77,19 +100,26 @@ func LoadReachableIPV4() ([]net.IP, error) {
 	if err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	return sync2.GroupGenericWithContext(ctx, ips, func(ctx context.Context, ip net.IP) (net.IP, error) {
+
+	ips, err = sync2.GroupGenericWithContext(ctx, ips, func(ctx context.Context, ip net.IP) (net.IP, error) {
 		dialer := &net.Dialer{
 			LocalAddr: &net.TCPAddr{
-				IP: ip,
+				IP:   ip,
+				Port: 0,
 			},
 		}
-		conn, err := dialer.DialContext(ctx, "tcp", DefaultTarget)
-		if err != nil {
-			return nil, fmt.Errorf("IP:%s不可用", ip.String())
+		conn, err2 := dialer.DialContext(ctx, "tcp4", DefaultTarget)
+		if err2 != nil {
+			return nil, err2
 		}
 		defer conn.Close()
 		return ip, nil
 	})
+	// IP信息去重信息
+	if len(ips) == 0 {
+		return nil, cmp.Or(err, fmt.Errorf("没有可用的IP"))
+	}
+	return ips, nil
 }

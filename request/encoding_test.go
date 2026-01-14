@@ -2,6 +2,7 @@ package request
 
 import (
 	"fmt"
+	"github.com/yydsqu/tools/dialer"
 	"io"
 	"net/http"
 	"os"
@@ -39,8 +40,6 @@ func IP(cli *http.Client, url string) {
 }
 
 func TestRoundRobinProxy(t *testing.T) {
-	go server()
-	time.Sleep(time.Second)
 	transport, err := LoadLocalDialerTransport(http.DefaultTransport.(*http.Transport), EncodingTransport, ChromeTransport)
 	if err != nil {
 		t.Fatal(err)
@@ -48,9 +47,10 @@ func TestRoundRobinProxy(t *testing.T) {
 	client := &http.Client{
 		Transport: transport,
 	}
+
 	// 获取IP地址
 	for i := 0; i < 100; i++ {
 		time.Sleep(time.Second)
-		IP(client, "http://192.168.1.6:5566")
+		IP(client, dialer.IPIFYV4Target)
 	}
 }

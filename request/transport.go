@@ -28,8 +28,9 @@ func RoundRobinTransport(transports ...http.RoundTripper) http.RoundTripper {
 func LoadLocalDialerTransport(root *http.Transport, warps ...WarpTransport) (http.RoundTripper, error) {
 	locals, err := dialer.LoadLocalDialer()
 	if err != nil {
-		return nil, fmt.Errorf("加载本地IP信息错误%s", err)
+		return nil, fmt.Errorf("加载本地IP信息错误:%w", err)
 	}
+
 	var transports []http.RoundTripper
 
 	for _, local := range locals {
