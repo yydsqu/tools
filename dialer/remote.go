@@ -13,6 +13,8 @@ import (
 	"strings"
 )
 
+type Conn func(ctx context.Context, network, address string) (net.Conn, error)
+
 type Remote struct {
 	uri  *url.URL
 	dial func(ctx context.Context, network, address string) (net.Conn, error)
@@ -30,7 +32,7 @@ func (remote *Remote) DialContext(ctx context.Context, network, address string) 
 	return remote.dial(ctx, network, address)
 }
 
-func NewSocks5(uri *url.URL) (func(ctx context.Context, network, address string) (net.Conn, error), error) {
+func NewSocks5(uri *url.URL) (Conn, error) {
 	var (
 		auth   *proxy.Auth
 		dialer proxy.Dialer
@@ -54,7 +56,7 @@ func NewSocks5(uri *url.URL) (func(ctx context.Context, network, address string)
 	}, err
 }
 
-func NewHttp(uri *url.URL) (func(ctx context.Context, network, address string) (net.Conn, error), error) {
+func NewHttp(uri *url.URL) (Conn, error) {
 	dialer := net.Dialer{}
 
 	return func(ctx context.Context, network, address string) (net.Conn, error) {
