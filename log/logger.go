@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -114,14 +115,16 @@ func (l *Log) Close() {
 	}
 }
 
-func NewLogger(level Level, useColor bool, output string, maxBackup, maxSize int) *Log {
+func NewLogger(useColor bool, level Level, output string, maxBackup, maxSize int) *Log {
 	var (
 		writer io.WriteCloser
 		err    error
 	)
-	switch output {
-	case "", "stdout", "STDOUT":
+	switch strings.ToLower(output) {
+	case "stdout", "":
 		writer = os.Stdout
+	case "stderr":
+		writer = os.Stderr
 	default:
 		useColor = false
 		if writer, err = NewAsyncFileWriter(output, cmp.Or(maxSize, 512), cmp.Or(maxBackup, 15)); err != nil {
@@ -129,6 +132,7 @@ func NewLogger(level Level, useColor bool, output string, maxBackup, maxSize int
 			os.Exit(0)
 		}
 	}
+
 	return &Log{
 		inner:  slog.New(NewTerminalHandlerWithLevel(writer, level, useColor)),
 		writer: writer,
@@ -136,5 +140,27 @@ func NewLogger(level Level, useColor bool, output string, maxBackup, maxSize int
 }
 
 func NewLoggerWithConfig(conf *Config) *Log {
-	return NewLogger(conf.Level, conf.UseColor, conf.Output, conf.MaxBackups, conf.MaxSize)
+	var (
+		writer io.WriteCloser
+		err    error
+	)
+	switch strings.ToLower(conf.Output) {
+	case "stdout", "":
+		writer = os.Stdout
+	case "stderr":
+		writer = os.Stderr
+	default:
+		if writer, err = NewAsyncFileWriter(conf.Output, cmp.Or(conf.MaxSize, 512), cmp.Or(conf.MaxBackups, 15)); err != nil {
+			fmt.Fprintf(os.Stderr, "flush and close file error. err=%s", err)
+			os.Exit(0)
+		}
+	}
+	var handler slog.Handler = NewTerminalHandlerWithLevel(writer, conf.Level, conf.UseColor)
+	if conf.Prometheus {
+		handler = NewPrometheusHandler(conf.AppName, handler)
+	}
+	return &Log{
+		inner:  slog.New(handler),
+		writer: writer,
+	}
 }

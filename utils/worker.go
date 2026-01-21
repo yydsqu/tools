@@ -15,6 +15,8 @@ var (
 
 type Handle func(ctx context.Context)
 
+// SingleWorker
+// Deprecated
 type SingleWorker struct {
 	handle Handle
 	ctx    context.Context

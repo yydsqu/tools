@@ -42,14 +42,12 @@ func (w *AsyncFileWriter) Close() error {
 
 func (w *AsyncFileWriter) initLogFile() error {
 	realFilePath := w.timeFilePath(w.filePath)
-
 	// 确保目录存在
 	if _, err := os.Stat(filepath.Dir(realFilePath)); os.IsNotExist(err) {
-		if mkErr := os.MkdirAll(filepath.Dir(realFilePath), os.ModePerm); mkErr != nil {
-			return mkErr
+		if err = os.MkdirAll(filepath.Dir(realFilePath), os.ModePerm); err != nil {
+			return err
 		}
 	}
-
 	fd, err := os.OpenFile(realFilePath, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0o644)
 	if err != nil {
 		return err
@@ -57,14 +55,14 @@ func (w *AsyncFileWriter) initLogFile() error {
 	w.fd = fd
 
 	// 删除旧的 symlink（如果存在）
-	if _, err := os.Lstat(w.filePath); err == nil {
-		if rmErr := os.Remove(w.filePath); rmErr != nil {
-			return rmErr
+	if _, err = os.Lstat(w.filePath); err == nil {
+		if err = os.Remove(w.filePath); err != nil {
+			return err
 		}
 	}
 
 	// 创建新的 symlink 指向当前实际文件
-	if err := os.Symlink(realFilePath, w.filePath); err != nil {
+	if err = os.Symlink(realFilePath, w.filePath); err != nil {
 		return err
 	}
 	return nil

@@ -25,3 +25,12 @@ func NewHash[T any](items ...T) (*Hash[T], error) {
 		items: items,
 	}, nil
 }
+
+func MustHash[T any](items ...T) *Hash[T] {
+	if len(items) == 0 {
+		panic("empty items")
+	}
+	return &Hash[T]{
+		items: items,
+	}
+}

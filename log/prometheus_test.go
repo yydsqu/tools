@@ -4,6 +4,5 @@ import (
 	"testing"
 )
 
-func TestTrace(t *testing.T) {
-
+func TestPrometheus(t *testing.T) {
 }

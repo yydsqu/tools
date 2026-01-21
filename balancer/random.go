@@ -29,3 +29,12 @@ func NewRandom[T any](items ...T) (*Random[T], error) {
 		rnd:   rand.New(rand.NewSource(time.Now().UnixNano())),
 	}, nil
 }
+
+func MustRandom[T any](items ...T) *Random[T] {
+	if len(items) == 0 {
+		panic("empty items")
+	}
+	return &Random[T]{
+		items: items,
+	}
+}

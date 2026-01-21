@@ -13,6 +13,8 @@ type RetryableFunc func() error
 
 type RetryableFuncWithResult[T any] func() (T, error)
 
+// Retry
+// Deprecated
 func Retry(handle RetryableFunc) (err error) {
 	for i := 0; i < DefaultAttempts; i++ {
 		if err = handle(); err == nil {
@@ -23,6 +25,8 @@ func Retry(handle RetryableFunc) (err error) {
 	return
 }
 
+// RetryWithResult
+// Deprecated
 func RetryWithResult[T any](handle RetryableFuncWithResult[T]) (empty T, err error) {
 	for i := 0; i < DefaultAttempts; i++ {
 		if empty, err = handle(); err == nil {
@@ -33,6 +37,8 @@ func RetryWithResult[T any](handle RetryableFuncWithResult[T]) (empty T, err err
 	return
 }
 
+// RetryWithOption
+// Deprecated
 func RetryWithOption[T any](fun RetryableFuncWithResult[T], attempts int, wait time.Duration) (empty T, err error) {
 	for i := 0; i < attempts; i++ {
 		if empty, err = fun(); err == nil {
@@ -43,6 +49,8 @@ func RetryWithOption[T any](fun RetryableFuncWithResult[T], attempts int, wait t
 	return
 }
 
+// RetryOption
+// Deprecated
 func RetryOption(handle RetryableFunc, attempts int, wait time.Duration) (err error) {
 	for i := 0; i < attempts; i++ {
 		if err = handle(); err == nil {

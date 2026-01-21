@@ -24,9 +24,5 @@ func exampleHandle(ctx context.Context) {
 }
 
 func TestName(t *testing.T) {
-	worker := NewSingleWorker(exampleHandle)
-	worker.Start()
-	time.Sleep(time.Second)
-	worker.Restart()
-	time.Sleep(time.Second)
+
 }

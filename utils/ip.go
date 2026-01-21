@@ -66,6 +66,8 @@ func TestDelay(urls []string) ([]Delay, error) {
 	return hosts, nil
 }
 
+// GetPublicIpV4
+// Deprecated
 func GetPublicIpV4() (string, error) {
 	resp, err := http.Get("https://api.ipify.org/")
 	if err != nil {
@@ -79,6 +81,8 @@ func GetPublicIpV4() (string, error) {
 	return string(all), nil
 }
 
+// GetPublicIpApi6
+// Deprecated
 func GetPublicIpApi6() (string, error) {
 	resp, err := http.Get("https://api6.ipify.org")
 	if err != nil {

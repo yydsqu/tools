@@ -31,3 +31,12 @@ func NewRoundRobin[T any](items ...T) (*RoundRobin[T], error) {
 		items: items,
 	}, nil
 }
+
+func MustRoundRobin[T any](items ...T) *RoundRobin[T] {
+	if len(items) == 0 {
+		panic("empty items")
+	}
+	return &RoundRobin[T]{
+		items: items,
+	}
+}
