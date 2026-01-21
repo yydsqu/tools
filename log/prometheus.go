@@ -11,6 +11,10 @@ import (
 	"strings"
 )
 
+var (
+	Hostname, _ = os.Hostname()
+)
+
 type PrometheusHandler struct {
 	appName string
 	root    slog.Handler
@@ -66,6 +70,9 @@ func NewPrometheusHandler(appName string, handler slog.Handler) *PrometheusHandl
 			prometheus.CounterOpts{
 				Name: "app_logs_total",
 				Help: "Total number of logs processed, partitioned by level.",
+				ConstLabels: map[string]string{
+					"hostname": Hostname,
+				},
 			},
 			[]string{"app", "level"},
 		)
