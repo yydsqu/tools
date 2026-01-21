@@ -15,34 +15,40 @@ import (
 const errorKey = "LOG_ERROR"
 
 type Logger interface {
-	With(ctx ...interface{}) Logger
+	New(ctx ...any) Logger
 
-	New(ctx ...interface{}) Logger
+	Handler() slog.Handler
 
-	Log(level slog.Level, msg string, ctx ...interface{})
+	With(ctx ...any) Logger
 
-	Trace(msg string, ctx ...interface{})
-
-	Debug(msg string, ctx ...interface{})
-
-	Info(msg string, ctx ...interface{})
-
-	Warn(msg string, ctx ...interface{})
-
-	Error(msg string, ctx ...interface{})
-
-	Fatal(msg string, ctx ...interface{})
-
-	Write(level slog.Level, msg string, attrs ...any)
+	WithGroup(name string) Logger
 
 	Enabled(ctx context.Context, level slog.Level) bool
 
-	Handler() slog.Handler
+	Log(level slog.Level, msg string, ctx ...any)
+
+	Trace(msg string, ctx ...any)
+
+	Debug(msg string, ctx ...any)
+
+	Info(msg string, ctx ...any)
+
+	Warn(msg string, ctx ...any)
+
+	Error(msg string, ctx ...any)
+
+	Fatal(msg string, ctx ...any)
+
+	Write(level slog.Level, msg string, attrs ...any)
 }
 
 type Log struct {
 	inner  *slog.Logger
 	writer io.WriteCloser
+}
+
+func (l *Log) New(ctx ...any) Logger {
+	return l.With(ctx...)
 }
 
 func (l *Log) Handler() slog.Handler {
@@ -76,8 +82,11 @@ func (l *Log) With(ctx ...any) Logger {
 	}
 }
 
-func (l *Log) New(ctx ...any) Logger {
-	return l.With(ctx...)
+func (l *Log) WithGroup(name string) Logger {
+	return &Log{
+		inner:  l.inner.WithGroup(name),
+		writer: l.writer,
+	}
 }
 
 func (l *Log) Enabled(ctx context.Context, level slog.Level) bool {

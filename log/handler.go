@@ -30,8 +30,10 @@ func (t *TerminalHandler) Enabled(_ context.Context, level slog.Level) bool {
 	return level >= t.lvl
 }
 
-func (t *TerminalHandler) WithGroup(name string) slog.Handler {
-	panic("not implemented")
+// WithGroup
+// NotImplemented
+func (t *TerminalHandler) WithGroup(_name string) slog.Handler {
+	return t
 }
 
 func (t *TerminalHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
