@@ -71,7 +71,7 @@ func NewPrometheusHandler(appName string, handler slog.Handler) *PrometheusHandl
 				Name: "app_logs_total",
 				Help: "Total number of logs processed, partitioned by level.",
 				ConstLabels: map[string]string{
-					"hostname": Hostname,
+					"nodename": Hostname,
 				},
 			},
 			[]string{"app", "level"},
@@ -83,4 +83,19 @@ func NewPrometheusHandler(appName string, handler slog.Handler) *PrometheusHandl
 		root:    handler,
 		counter: counter,
 	}
+}
+
+func init() {
+	gauge := prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "node_uname_info",
+			Help: "Node uname info gauge",
+			ConstLabels: map[string]string{
+				"nodename": Hostname,
+				"appname":  ExecutableName(),
+			},
+		},
+	)
+	gauge.Set(1)
+	prometheus.Register(gauge)
 }
