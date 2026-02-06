@@ -12,7 +12,17 @@ import (
 )
 
 var (
-	Hostname, _ = os.Hostname()
+	Hostname, _   = os.Hostname()
+	NodeUnameInfo = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "node_uname_info",
+			Help: "Node uname info gauge",
+			ConstLabels: map[string]string{
+				"nodename": Hostname,
+				"appname":  ExecutableName(),
+			},
+		},
+	)
 )
 
 type PrometheusHandler struct {
@@ -86,16 +96,6 @@ func NewPrometheusHandler(appName string, handler slog.Handler) *PrometheusHandl
 }
 
 func init() {
-	gauge := prometheus.NewGauge(
-		prometheus.GaugeOpts{
-			Name: "node_uname_info",
-			Help: "Node uname info gauge",
-			ConstLabels: map[string]string{
-				"nodename": Hostname,
-				"appname":  ExecutableName(),
-			},
-		},
-	)
-	gauge.Set(1)
-	prometheus.Register(gauge)
+	NodeUnameInfo.Set(1)
+	prometheus.Register(NodeUnameInfo)
 }
