@@ -36,5 +36,6 @@ func MustRandom[T any](items ...T) *Random[T] {
 	}
 	return &Random[T]{
 		items: items,
+		rnd:   rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
 }

@@ -34,9 +34,9 @@ func RacerGenericWithContext[P any, R any](parent context.Context, seeds []P, fn
 				}()
 				r, err := fn(ctx, seed)
 				select {
-				case ch <- &Result[R]{r, err}:
 				case <-ctx.Done():
 					return
+				case ch <- &Result[R]{r, err}:
 				}
 
 			}

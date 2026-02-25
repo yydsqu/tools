@@ -13,7 +13,7 @@ func TestRandom(t *testing.T) {
 }
 
 func BenchmarkRandom(b *testing.B) {
-	polling, _ := NewRandom("1", "2")
+	polling := MustRandom("1", "2")
 	for i := 0; i < b.N; i++ {
 		polling.Next()
 	}
