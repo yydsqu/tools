@@ -115,6 +115,8 @@ func (l *Log) Error(msg string, ctx ...any) {
 
 func (l *Log) Fatal(msg string, ctx ...any) {
 	l.Write(12, msg, ctx...)
+	l.Close()
+	fmt.Fprintf(os.Stderr, msg, ctx)
 	os.Exit(1)
 }
 
@@ -122,6 +124,7 @@ func (l *Log) Close() {
 	if l.writer != nil && l.writer != os.Stdout && l.writer != os.Stderr {
 		l.writer.Close()
 	}
+	SetDefault(defaultLogger)
 }
 
 func NewLogger(useColor bool, level Level, output string, maxBackup, maxSize int) *Log {

@@ -2,13 +2,12 @@ package balancer
 
 import (
 	"errors"
-	"sync"
+	"sync/atomic"
 )
 
 type RoundRobin[T any] struct {
 	items []T
-	index int
-	mutex sync.RWMutex
+	index atomic.Int64
 }
 
 func (p *RoundRobin[T]) Items() []T {
@@ -16,11 +15,7 @@ func (p *RoundRobin[T]) Items() []T {
 }
 
 func (p *RoundRobin[T]) Next() T {
-	p.mutex.RLock()
-	defer p.mutex.RUnlock()
-	v := p.items[p.index]
-	p.index = (p.index + 1) % len(p.items)
-	return v
+	return p.items[int(p.index.Add(1))%len(p.items)]
 }
 
 func NewRoundRobin[T any](items ...T) (*RoundRobin[T], error) {
@@ -38,5 +33,6 @@ func MustRoundRobin[T any](items ...T) *RoundRobin[T] {
 	}
 	return &RoundRobin[T]{
 		items: items,
+		index: atomic.Int64{},
 	}
 }

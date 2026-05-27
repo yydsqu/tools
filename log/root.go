@@ -6,12 +6,14 @@ import (
 	"sync/atomic"
 )
 
-var root atomic.Value
-
-func init() {
-	defaultLogger := &Log{
+var (
+	defaultLogger = &Log{
 		inner: slog.New(NewTerminalHandler(os.Stdout, true)),
 	}
+	root atomic.Value
+)
+
+func init() {
 	SetDefault(defaultLogger)
 }
 

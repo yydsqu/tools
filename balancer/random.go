@@ -16,7 +16,7 @@ func (p *Random[T]) Items() []T {
 }
 
 func (p *Random[T]) Next() T {
-	return p.items[p.rnd.Int()%len(p.items)]
+	return p.items[p.rnd.Intn(len(p.items))]
 }
 
 func NewRandom[T any](items ...T) (*Random[T], error) {
