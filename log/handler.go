@@ -30,8 +30,6 @@ func (t *TerminalHandler) Enabled(_ context.Context, level slog.Level) bool {
 	return level >= t.lvl
 }
 
-// WithGroup
-// NotImplemented
 func (t *TerminalHandler) WithGroup(_name string) slog.Handler {
 	return t
 }
