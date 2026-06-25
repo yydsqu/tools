@@ -25,13 +25,4 @@ func handle(ctx context.Context) {
 }
 
 func TestSingleWorker(t *testing.T) {
-	worker := NewWorker(handle)
-	fmt.Println("0、===============", time.Now())
-	worker.Start()
-	fmt.Println("1、===============", time.Now())
-	worker.Start()
-	time.Sleep(time.Second * 3)
-	fmt.Println("3、===============", time.Now())
-	worker.Restart(false)
-	time.Sleep(time.Hour)
 }
