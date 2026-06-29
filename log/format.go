@@ -137,7 +137,7 @@ func FormatSlogValue(v slog.Value, tmp []byte) (result []byte) {
 	case slog.KindUint64:
 		return strconv.AppendUint(tmp, v.Uint64(), 10)
 	case slog.KindFloat64:
-		return strconv.AppendFloat(tmp, v.Float64(), floatFormat, 3, 64)
+		return strconv.AppendFloat(tmp, v.Float64(), floatFormat, 6, 64)
 	case slog.KindBool:
 		return strconv.AppendBool(tmp, v.Bool())
 	case slog.KindDuration:
